@@ -17,7 +17,21 @@
 	
 	
 	<script type="text/template" id="book-list-template">
-		<a href="#/new" class="btn btn-primary">Add Book</a>
+		
+		
+		<table>
+			<tr>
+				
+					<td><input type="text" id="searchBookTxt"/></td>
+					<td><a href="#/search" class="btn btn-primary">Search Book</a></td>
+					<td></td>
+					<th><a href="#/new" class="btn btn-primary">Add Book</a></th>
+				
+			</tr>
+			
+		</table>
+		
+		
 		<table class="table striped">
 			<thead>
 				<tr>
@@ -32,7 +46,7 @@
 					<tr>
 						<td><%= book.get('name')  %> </td>
 						<td><%= book.get('author')  %> </td>
-						<td><%= book.get('read_status')  %> </td>
+						<td><%= book.get('read_status') =='t' ? 'Read' : 'Not yet read'  %> </td>
 						<td><a href="#/edit/<%= book.get('id') %>" class="btn">Edit</a></td>
 						
 					</tr>	
@@ -53,8 +67,18 @@
 			<label>Author</label>
 			<input type="text" name="author" value="<%= book ? book.get('author') : ''%>"/>
 
-			<label>Status</label>
-			<input type="text" name="read_status" value="<%= book ? book.get('read_status') : ''%>"/>
+			<label>Status : </label> 
+			<input type="hidden" id="read_status" name="read_status" value="<%= book ? book.get('read_status') : ''%>" />
+			<input type="text" id="read_status_msg" name="read_status_msg" value="<%= (book && book.get('read_status') =='t') ? 'Read' : 'Not yet read'  %>" readonly/>
+			<br/>
+			
+			<select name="read_status_lst" id="read_status_lst" onchange="updateReadStatus()">
+			  <option value="" selected>Change Status</option>
+			  <option value="t">Read</option>
+			  <option value="f">Not yet read</option>
+			  
+			</select>
+			
 			<hr />
 
 			<button type="submit" class="btn"><%= book ? 'Update' : 'Add'%></button>
@@ -65,6 +89,42 @@
 			<% } %>
 		</form>
 	</script>	
+	
+	
+	
+	
+	<script type="text/template" id="book-search-template">
+		
+		<h3>Search Result</h3>
+		<hr/>
+		
+		
+		
+		<table class="table striped">
+			<thead>
+				<tr>
+					<th>Book Name</th>
+					<th>Author</th>
+					<th>Status</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				<% _.each(books, function(book) { %>
+					<tr>
+						<td><%= book.get('name')  %> </td>
+						<td><%= book.get('author')  %> </td>
+						<td><%= book.get('read_status') =='t' ? 'Read' : 'Not yet read'  %> </td>
+						<td><a href="#/edit/<%= book.get('id') %>" class="btn">Edit</a></td>
+						
+					</tr>	
+				
+				<% }); %>
+			</tbody>
+		</table>
+	</script>
+	
+	
 	
 	
 	
@@ -108,6 +168,14 @@
 			urlRoot: '/books'
 	});
 	
+	var Search = Backbone.Collection.extend({
+		url: function() {
+			return '/search/' + $('#searchBookTxt').val();
+		}	
+		
+	});
+	
+	
 	var BookList = Backbone.View.extend({
 		el: '.page',
 		
@@ -141,6 +209,16 @@
 					});
 				
 				}
+				else if(options.name) {
+					that.search = new Search();
+					that.search.fetch({
+					success: function (books) {
+						var template = _.template($('#book-search-template').html(), {books: books.models});
+						that.$el.html(template);
+					}
+					
+					});
+				}
 				else {
 					var template = _.template($('#edit-book-template').html(), {book: null});
 					this.$el.html(template);
@@ -173,8 +251,40 @@
 		});
 	
 	
+	var SearchBook = Backbone.View.extend({
+		el: '.page',
+		
+		render: function (options) {
+			console.log("Enerting Book List...!!!");
+			var that = this;
+			var search = new Search();
+			search.fetch({
+					success: function (books) {
+							var template = _.template($('#book-search-template').html(), {books: books.models});
+							that.$el.html(template);
+							
+						
+						}
+				});
+			
+							
+		}
+	});
 	
 	
+	function updateReadStatus() {
+		
+		if($('#read_status_lst').val() == 't') {
+
+			$('#read_status_msg').val('Read');
+			$('#read_status').val('t');
+		}
+		else {
+			$('#read_status_msg').val('Not yet read');
+			$('#read_status').val('f');
+		
+		}
+	}
 	
 	
 	
@@ -182,11 +292,13 @@
 		routes: {
 			'': 'home',
 			'new':'editBook',
-			'edit/:id': 'editBook'
+			'edit/:id': 'editBook',
+			'search':'searchBook'
 			}
 		});
 	
 	var bookList = new BookList();
+	var searchBook = new SearchBook();
 	var editBook = new EditBook();
 	
 	var router = new AppRouter();
@@ -199,8 +311,13 @@
 	router.on('route:editBook', function(id) {
 		editBook.render({id: id});
 		});
-
-		
+	
+	router.on('route:searchBook', function() {
+		var bookName = $('#searchBookTxt').val();
+		editBook.render({name: bookName});
+		});
+	
+			
 	Backbone.history.start();
 
 </script>
